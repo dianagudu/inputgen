@@ -2,3 +2,5 @@ cloud_traces
 .ipynb_checkpoints
 env
 **/**/*.pyc
+.vscode
+notes.txt
