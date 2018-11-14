@@ -7,7 +7,7 @@ import yaml
 
 from .helper import objectview
 
-
+ 
 class DatasetProcessor():
     def __init__(self, name, output_filename, domain):
         self.__name = name
