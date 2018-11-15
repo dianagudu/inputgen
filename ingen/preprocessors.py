@@ -6,8 +6,9 @@ import json
 import yaml
 
 from .helper import objectview
+from .histogram import Histogram
 
- 
+
 class DatasetProcessor():
     def __init__(self, name, output_filename, domain):
         self.__name = name
@@ -145,6 +146,11 @@ class DataSource():
 
     def __call__(self):
         return self.data
+
+    def get_histogram(self, binning):
+        values, _ = np.histogramdd(
+            self.data, bins=binning.bin_edges, normed=True)
+        return Histogram(binning, values)
 
 
 class DataReader():
