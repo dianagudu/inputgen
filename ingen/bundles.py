@@ -17,11 +17,22 @@ class BundleGenerator():
         self.__compute_probability_matrix()
         pass
 
+    def recommended_amount(self, real_histogram):
+        min_prob = self.probabilities[
+            (self.probabilities[:, -1] > 0) *
+            (real_histogram.values.flatten() > 0),
+            -1].min()
+
+        if min_prob > 0:
+            return int(1/min_prob)
+        else:
+            return 0
+
     def __compute_probability_matrix(self):
         all_edges = [
             np.unique(np.concatenate((gbe, mbe)))
-                for gbe, mbe in zip(self.binning.edges,
-                                    self.model.binning.edges)
+            for gbe, mbe in zip(self.binning.edges,
+                                self.model.binning.edges)
         ]
 
         # Create sub_edges for each bin and along each dimension.
@@ -49,34 +60,34 @@ class BundleGenerator():
                                   self.binning.dimensions + 1))
         for i, bin_index in enumerate(bin_indices):
             # Find center of current bin
-            probabilities[i,:-1] = [cpd[idx] for idx, cpd in
-                                    zip(bin_index, self.binning.centers)]
+            probabilities[i, :-1] = [cpd[idx] for idx, cpd in
+                                     zip(bin_index, self.binning.centers)]
 
             # Create sub-binning to calculate probability of bin
             sub_binning = Binning(Binning_Types.SUBBINNING,
-                [sub_edges[dim][idx] for dim, idx in enumerate(bin_index)])
+                                  [sub_edges[dim][idx] for dim, idx in enumerate(bin_index)])
 
             factors = sub_binning.volumes / sub_binning.total_volume
             alltF = self.model.F(*sub_binning.meshgrids).flatten()
             alltF = [x if x > 0.0 else 0.0 for x in alltF]
             alltF = alltF * factors.flatten()
-            probabilities[i,-1] = sum(alltF)
+            probabilities[i, -1] = sum(alltF)
 
-        probabilities[:,-1] /= np.linalg.norm(probabilities[:,-1], ord=1)
+        probabilities[:, -1] /= np.linalg.norm(probabilities[:, -1], ord=1)
         self.__probabilities = probabilities
 
     def generate(self, amount, name="", random_seed=None):
         def pick(p, n):
             # picks n coordinates from the probability matrix p
-            return np.stack([p[x,:-1] for x in
-                    np.random.choice(range(p.shape[0]), p=p[:,-1], size=n)])
+            return np.stack([p[x, :-1] for x in
+                             np.random.choice(range(p.shape[0]), p=p[:, -1], size=n)])
         return self.__generate(amount, random_seed, pick, name)
 
     def generate_uniform(self, amount, name="", random_seed=None):
         def uniform_pick(p, n):
             # picks n coordinates from the probability matrix p
-            return np.stack([p[x,:-1] for x in
-                    np.random.randint(p.shape[0], size=n)])
+            return np.stack([p[x, :-1] for x in
+                             np.random.randint(p.shape[0], size=n)])
         return self.__generate(amount, random_seed, uniform_pick, name)
 
     def __generate(self, amount, random_seed, picker, name):

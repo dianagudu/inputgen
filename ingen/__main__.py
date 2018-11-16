@@ -37,9 +37,13 @@ model = Model.from_histogram(model_params, histogram, column_names=source.column
 model.to_file("/tmp/a")
 model2 = Model.from_file("/tmp/a")
 
-bg = BundleGenerator(model, RegularBinning(8, source.domain))
+gebing = RegularBinning(13, source.domain)
+bg = BundleGenerator(model, gebing)
 fundle = bg.generate_uniform(2)
 bundle = bg.generate(1)
+ra = bg.recommended_amount(source.get_histogram(gebing))
+bundle.get_histogram(bing)
+
 print()
 
 
