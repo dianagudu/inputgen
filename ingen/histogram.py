@@ -20,9 +20,8 @@ class Histogram():
         self.__values /= np.linalg.norm(self.__values.flatten(), ord=ord)
 
     def copy(self):
-        bin_copy = self.binning.copy()
-        val_copy = np.copy(self.values)
-        return Histogram(bin_copy, val_copy)
+        return Histogram(self.binning.copy(),
+                         np.copy(self.values))
 
     @property
     def values(self):

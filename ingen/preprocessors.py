@@ -149,7 +149,7 @@ class DataSource():
 
     def get_histogram(self, binning):
         values, _ = np.histogramdd(
-            self.data, bins=binning.bin_edges, normed=True)
+            self.data, bins=binning.edges, normed=True)
         return Histogram(binning, values)
 
 

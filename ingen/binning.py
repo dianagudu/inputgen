@@ -11,6 +11,7 @@ class Binning_Types(Enum):
     REGULAR = 1
     IRREGULAR = 2
     CLUSTERED = 3
+    SUBBINNING = 99
 
 
 class Pad_Modes(Enum):
@@ -19,105 +20,109 @@ class Pad_Modes(Enum):
 
 
 class Binning():
-    def __init__(self, type, bin_edges, random_seed=0):
+    def __init__(self, type, edges, random_seed=0):
         self.__type = type
-        self.__bin_edges = list(np.copy(bin_edges))
-        self.__bin_counts = [
-            len(x) - 1 for x in bin_edges
+        self.__edges = list(np.copy(edges))
+        self.__counts = [
+            len(x) - 1 for x in edges
         ]
         self.__random_seed = random_seed
-        self.__bin_distances = [edges_along_dim[1:] - edges_along_dim[:-1]
-                                for edges_along_dim in bin_edges]
-        self.__bin_centers = list(map(centering, bin_edges))
+        self.__distances = [edges_along_dim[1:] - edges_along_dim[:-1]
+                            for edges_along_dim in edges]
+        self.__centers = list(map(centering, edges))
         self.__total_volume = np.prod([edges_along_dim[-1] - edges_along_dim[0]
-                                       for edges_along_dim in bin_edges])
+                                       for edges_along_dim in edges])
 
-        mg_dists = np.meshgrid(*self.__bin_distances, indexing='ij')
-        self.__bin_volumes = mg_dists[0]
+        mg_dists = np.meshgrid(*self.__distances, indexing='ij')
+        self.__volumes = mg_dists[0]
         for mgd in mg_dists[1:]:
-            self.__bin_volumes = np.multiply(self.__bin_volumes, mgd)
+            self.__volumes = np.multiply(self.__volumes, mgd)
 
-        self.__meshgrids = np.meshgrid(*self.__bin_centers, indexing='ij')
+        self.__meshgrids = np.meshgrid(*self.__centers, indexing='ij')
 
     def copy(self):
-        return Binning(self.type, self.bin_edges, self.random_seed)
+        return Binning(self.type, self.edges, self.random_seed)
 
     @property
     def type(self):
         return self.__type
 
     @property
-    def bin_counts(self):
-        return self.__bin_counts
+    def counts(self):
+        return self.__counts
 
     @property
-    def bin_edges(self):
-        return self.__bin_edges
+    def edges(self):
+        return self.__edges
 
     @property
     def random_seed(self):
         return self.__random_seed
 
     @property
-    def bin_distances(self):
-        return self.__bin_distances
+    def distances(self):
+        return self.__distances
 
     @property
-    def bin_centers(self):
-        return self.__bin_centers
+    def centers(self):
+        return self.__centers
 
     @property
     def total_volume(self):
         return self.__total_volume
 
     @property
-    def bin_volumes(self):
-        return self.__bin_volumes
+    def volumes(self):
+        return self.__volumes
 
     @property
     def meshgrids(self):
         return self.__meshgrids
 
+    @property
+    def dimensions(self):
+        return len(self.edges)
+
     def to_dict(self):
         return to_dict(self, [
             "type",
-            ("bin_edges", lambda x: [y.tolist() for y in x]),
+            ("edges", lambda x: [y.tolist() for y in x]),
             "random_seed"
         ])
 
     @staticmethod
     def from_dict(d):
-        d["bin_edges"] = [np.array(y) for y in d["bin_edges"]]
+        d["edges"] = [np.array(y) for y in d["edges"]]
         return Binning(**d)
 
 
 class RegularBinning(Binning):
-    def __init__(self, bin_counts, src):
-        if isinstance(bin_counts, int):
-            bin_counts = [bin_counts] * len(src.domain)
+    def __init__(self, counts, domain):
+        if isinstance(counts, int):
+            counts = [counts] * len(domain)
 
-        bin_edges = self.__regularBinEdgeGenerator(bin_counts, src.domain)
+        edges = self.__regularBinEdgeGenerator(counts, domain)
         super().__init__(type=Binning_Types.REGULAR,
-                         bin_edges=bin_edges)
+                         edges=edges)
 
-    def __regularBinEdgeGenerator(self, bin_counts, domain):
+    def __regularBinEdgeGenerator(self, counts, domain):
         return [np.linspace(0.0, d, n + 1)
-                for n, d in zip(bin_counts, domain)]
+                for n, d in zip(counts, domain)]
 
 
 class IrregularBinning(Binning):
-    def __init__(self, bin_counts, src, spread=0.3):
-        if isinstance(bin_counts, int):
-            bin_counts = [bin_counts] * len(src.domain)
+    def __init__(self, counts, domain, spread=0.3):
+        if isinstance(counts, int):
+            counts = [counts] * len(domain)
 
         random_seed = int(time())
-        bin_edges = self.__irregularBinEdgeGenerator(
-            bin_counts, src.domain, spread, random_seed)
+        edges = self.__irregularBinEdgeGenerator(
+            counts, domain, spread, random_seed)
         super().__init__(type=Binning_Types.IRREGULAR,
-                         bin_edges=bin_edges,
+                         edges=edges,
                          random_seed=random_seed)
 
-    def __irregularBinEdgeGenerator(self, bin_counts, domain, spread,
+    def __irregularBinEdgeGenerator(self, counts, domain, spread,
                                     random_seed):
         def single_dim(count, domain):
             dst = np.random.randint(1, int(count * (1. + spread)), size=count)
@@ -135,22 +140,22 @@ class IrregularBinning(Binning):
             return np.array(bins)
 
         np.random.seed(random_seed)
-        return [single_dim(c, d) for c, d in zip(bin_counts, domain)]
+        return [single_dim(c, d) for c, d in zip(counts, domain)]
 
 
 class ClusteredBinning(Binning):
-    def __init__(self, bin_counts, src):
-        if isinstance(bin_counts, int):
-            bin_counts = [bin_counts] * len(src.domain)
+    def __init__(self, counts, src):
+        if isinstance(counts, int):
+            counts = [counts] * len(src.domain)
 
         random_seed = int(time())
-        bin_edges = self.__clusteredBinEdgeGenerator(bin_counts, src.domain,
+        edges = self.__clusteredBinEdgeGenerator(counts, src.domain,
                                                      src.data, random_seed)
         super().__init__(type=Binning_Types.CLUSTERED,
-                         bin_edges=bin_edges,
+                         edges=edges,
                          random_seed=random_seed)
 
-    def __clusteredBinEdgeGenerator(self, bin_counts, domain, data,
+    def __clusteredBinEdgeGenerator(self, counts, domain, data,
                                     random_seed):
         def single_dim(count, domain, data1D):
             kmeans = KMeans(n_clusters=count, init='k-means++',
@@ -161,7 +166,7 @@ class ClusteredBinning(Binning):
                                   axis=None)
 
         return [single_dim(c, d, col)
-                for c, d, col in zip(bin_counts, domain, data.T)]
+                for c, d, col in zip(counts, domain, data.T)]
 
 
 class BinningExtender():
@@ -171,19 +176,19 @@ class BinningExtender():
                 [edges_along_dim[0] + edges_along_dim[0] - edges_along_dim[1]],
                 edges_along_dim,
                 [edges_along_dim[-1] + edges_along_dim[-1] - edges_along_dim[-2]]
-            )) for edges_along_dim in binning.bin_edges]
+            )) for edges_along_dim in binning.edges]
         return Binning(binning.type, extended_bin_edges,
                        binning.random_seed)
 
     @staticmethod
     def epsilon(binning):
         # Calculate avg. bin size along all dimensions
-        epsilons = [np.mean(dists) for dists in binning.bin_distances]
+        epsilons = [np.mean(dists) for dists in binning.distances]
         extended_bin_edges = [np.concatenate((
             [edges_along_dim[0] - epsilon],
             edges_along_dim,
             [edges_along_dim[-1] + epsilon]
-        )) for epsilon, edges_along_dim in zip(epsilons, binning.bin_edges)]
+        )) for epsilon, edges_along_dim in zip(epsilons, binning.edges)]
         return Binning(binning.type, extended_bin_edges,
                        binning.random_seed)
 
