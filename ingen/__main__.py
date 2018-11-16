@@ -16,7 +16,7 @@ from .bundles import BundleGenerator
 
 output = sys.argv[1]
 filenames = sys.argv[2:]
-#source = GoogleDatasetProcessor(name="Pedro",
+# source = GoogleDatasetProcessor(name="Pedro",
 #                       output_filename=output,
 #                       source_filenames=filenames).process()
 
@@ -32,7 +32,8 @@ model_params = ModelParams(Pad_Modes.MIRROR, Pad_Values.NEG_COPY,
 
 histogram = source.get_histogram(bing)
 
-model = Model.from_histogram(model_params, histogram, column_names=source.column_names)
+model = Model.from_histogram(model_params, histogram,
+                             column_names=source.column_names)
 
 model.to_file("/tmp/a")
 model2 = Model.from_file("/tmp/a")
@@ -41,20 +42,22 @@ gebing = RegularBinning(13, source.domain)
 bg = BundleGenerator(model, gebing)
 fundle = bg.generate_uniform(2)
 bundle = bg.generate(1)
-ra = bg.recommended_amount(source.get_histogram(gebing))
+rebinned_source_hist = source.get_histogram(gebing)
+ra = bg.recommended_amount(rebinned_source_hist)
+diana = bg.expected_best_quality(rebinned_source_hist)
 bundle.get_histogram(bing)
 
 print()
 
 
-### TODO: Bundle amount recommendation to BundleGenerator.
-### Error/Quality stuff
-### Some plotting.
+# TODO: Bundle amount recommendation to BundleGenerator.
+# Error/Quality stuff
+# Some plotting.
 
 #bing = IrregularBinning(8, source.domain, spread=0.3)
-#print(bing.edges)
+# print(bing.edges)
 #print("Random seed =", bing.random_seed)
 
 #bing = ClusteredBinning(8, source)
-#print(bing.edges)
+# print(bing.edges)
 #print("Random seed =", bing.random_seed)

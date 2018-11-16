@@ -18,6 +18,8 @@ class BundleGenerator():
         pass
 
     def recommended_amount(self, real_histogram):
+        """real_histogram: the histogram of the model's source data
+                           binned with the new binning."""
         min_prob = self.probabilities[
             (self.probabilities[:, -1] > 0) *
             (real_histogram.values.flatten() > 0),
@@ -27,6 +29,15 @@ class BundleGenerator():
             return int(1/min_prob)
         else:
             return 0
+
+    def expected_best_quality(self, amount, real_histogram):
+        """real_histogram: the histogram of the model's source data
+                           binned with the new binning."""
+        index = np.array([p * amount > 1 or
+                          real_histogram.values.flatten()[i] == 0
+                          for i, p in enumerate(self.probabilities[:, -1])])
+        return self.binning.volumes.flatten()[index].sum() / \
+                    self.binning.total_volume
 
     def __compute_probability_matrix(self):
         all_edges = [
