@@ -2,6 +2,9 @@ import numpy as np
 
 class KPIs():
     def __init__(self, hist1, hist2):
+        """hist1 is the histogram of the data the model is derived from,
+           hist2 is the histogram of the newly generated data.
+           Note: both must be using the same binning!"""
         self.__h1 = hist1           # Model Source, realH
         self.__h2 = hist2           # ndH, generated
 
@@ -22,33 +25,20 @@ class KPIs():
                 return 0
             return 1 - abs(delta) / r
 
-        ab_quality = sum([get_quality(r, delta) * vol
-                            for r, delta, vol
-                                in zip(self.__h1f,
-                                    self.__diff,
-                                    self.__h2.binning.volumes.flatten())]) / \
-                                        self.__h2.binning.total_volume
+        def quality(index):
+            if not any(index):
+                return 2.0
+            else:
+                bin_vols = self.__h2.binning.volumes.flatten()
+                pairs = zip(self.__h1f[index],
+                            self.__diff[index],
+                            bin_vols[index])
+                return sum([get_quality(r, delta) * vol
+                            for r, delta, vol in pairs]) / bin_vols[index].sum()
 
+        abi = [True] * self.__h1f.size
         nebi = self.__h1f > 0
         ebi = self.__h1f == 0
 
-        neb_quality = sum([get_quality(r, delta) * vol
-                            for r, delta, vol
-                                in zip(self.__h1f[nebi],
-                                    self.__diff[nebi],
-                                    self.__h2.binning.volumes.flatten()[nebi])]) / \
-                                        self.__h2.binning.volumes.flatten()[nebi].sum()
-
-        if not any(ebi):
-            eb_quality = 2.0
-        else:
-            eb_quality = sum([get_quality(r, delta) * vol
-                                for r, delta, vol
-                                    in zip(self.__h1f[ebi],
-                                        self.__diff[ebi],
-                                        self.__h2.binning.volumes.flatten()[ebi])]) / \
-                                            self.__h2.binning.volumes.flatten()[ebi].sum()
-
-        return (ab_quality, neb_quality, eb_quality)
-
+        return (quality(abi), quality(nebi), quality(ebi))
 
