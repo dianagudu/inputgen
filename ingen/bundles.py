@@ -1,9 +1,12 @@
 import numpy as np
+import datetime
 
 from time import time
 
 from .binning import Binning
 from .binning import Binning_Types
+from .helper import objectview
+from .preprocessors import DataSource
 
 
 class BundleGenerator():
@@ -62,27 +65,41 @@ class BundleGenerator():
         probabilities[:,-1] /= np.linalg.norm(probabilities[:,-1], ord=1)
         self.__probabilities = probabilities
 
-    def generate(self, amount, random_seed=None):
+    def generate(self, amount, name="", random_seed=None):
         def pick(p, n):
             # picks n coordinates from the probability matrix p
             return np.stack([p[x,:-1] for x in
                     np.random.choice(range(p.shape[0]), p=p[:,-1], size=n)])
-        return self.__generate(amount, random_seed, pick)
+        return self.__generate(amount, random_seed, pick, name)
 
-    def generate_uniform(self, amount, random_seed=None):
+    def generate_uniform(self, amount, name="", random_seed=None):
         def uniform_pick(p, n):
             # picks n coordinates from the probability matrix p
             return np.stack([p[x,:-1] for x in
                     np.random.randint(p.shape[0], size=n)])
-        return self.__generate(amount, random_seed, uniform_pick)
+        return self.__generate(amount, random_seed, uniform_pick, name)
 
-    def __generate(self, amount, random_seed, picker):
+    def __generate(self, amount, random_seed, picker, name):
         # generate bundles
         if not random_seed:
             random_seed = int(time())
         np.random.seed(random_seed)
         self.__last_seed = random_seed
-        return picker(self.probabilities, amount)
+
+        mobj = {
+            "name": name,
+            "type": "Generated",
+            "creation_date": datetime.datetime.now().isoformat(),
+            "random_seed": self.__last_seed
+        }
+
+        ret = DataSource(
+            info=objectview(mobj),
+            domain=[max(b) for b in self.binning.edges],
+            column_names=self.model.column_names,
+            data=picker(self.probabilities, amount)
+        )
+        return ret
 
     @property
     def model(self):

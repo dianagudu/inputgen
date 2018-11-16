@@ -32,7 +32,7 @@ model_params = ModelParams(Pad_Modes.MIRROR, Pad_Values.NEG_COPY,
 
 histogram = source.get_histogram(bing)
 
-model = Model.from_histogram(model_params, histogram)
+model = Model.from_histogram(model_params, histogram, column_names=source.column_names)
 
 model.to_file("/tmp/a")
 model2 = Model.from_file("/tmp/a")
@@ -42,6 +42,10 @@ fundle = bg.generate_uniform(2)
 bundle = bg.generate(1)
 print()
 
+
+### TODO: Bundle amount recommendation to BundleGenerator.
+### Error/Quality stuff
+### Some plotting.
 
 #bing = IrregularBinning(8, source.domain, spread=0.3)
 #print(bing.edges)

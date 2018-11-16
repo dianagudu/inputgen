@@ -50,10 +50,11 @@ class ModelParams():
 
 
 class Model():
-    def __init__(self, binning, model_params, function):
+    def __init__(self, binning, model_params, function, column_names):
         self.__binning = binning.copy()
         self.__model_params = model_params
         self.__function = function
+        self.__column_names = column_names
 
     @staticmethod
     def from_file(filename):
@@ -70,10 +71,11 @@ class Model():
         binning = Binning.from_dict(mobj["binning"])
         model_params = ModelParams.from_dict(mobj["model_params"])
         function = pickle.loads(zlib.decompress(mobj["function"]))
-        return Model(binning, model_params, function)
+        column_names = mobj["column_names"]
+        return Model(binning, model_params, function, column_names)
 
     @staticmethod
-    def from_histogram(model_params, histogram):
+    def from_histogram(model_params, histogram, column_names=None):
         extended_histogram = histogram.copy()
         extended_histogram.normalize()
         extended_histogram = HistogramExtender.extend(
@@ -100,12 +102,17 @@ class Model():
         else:
             raise Exception("Invalid interpolation_mode.")
 
-        return Model(histogram.binning, model_params, function)
+        if not column_names:
+            column_names = ["Resource%s" % i
+                            for i in range(histogram.binning.dimensions)]
+
+        return Model(histogram.binning, model_params, function, column_names)
 
 
     def to_dict(self):
         mobj = {
             "binning": self.binning.to_dict(),
+            "column_names": self.column_names,
             "model_params": self.model_params.to_dict(),
             "function": zlib.compress(pickle.dumps(self.__function))
         }
@@ -123,5 +130,6 @@ class Model():
     def model_params(self):
         return self.__model_params
 
-    def __call__(self, *args):
-        return self.__function(*args)
+    @property
+    def column_names(self):
+        return self.__column_names
