@@ -1,6 +1,9 @@
 import sys
 
 from .preprocessors import GoogleDatasetProcessor
+from .preprocessors import BitbrainsDatasetProcessor
+from .preprocessors import UniformDatasetProcessor
+from .preprocessors import HotspotsDatasetProcessor
 from .preprocessors import DataReader
 from .binning import RegularBinning
 from .binning import IrregularBinning
@@ -19,6 +22,23 @@ filenames = sys.argv[2:]
 # source = GoogleDatasetProcessor(name="Pedro",
 #                       output_filename=output,
 #                       source_filenames=filenames).process()
+
+
+# folder = "cloud_traces/bitbrains/fastStorage/2013-8/"
+# #folder = sys.argv[2]
+# source2 = BitbrainsDatasetProcessor(name="Brainss",
+#                                     output_filename=output,
+#                                     source_folder=folder).process()
+
+# source3 = UniformDatasetProcessor(name="uni",
+#                                   output_filename=output,
+#                                   dimensions=3).process()
+
+# source4 = HotspotsDatasetProcessor(name="hot",
+#                                    output_filename=output,
+#                                    dimensions=3,
+#                                    hotspot_count=16).process()
+
 
 source = DataReader(filename=output).read()
 
