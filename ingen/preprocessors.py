@@ -38,7 +38,6 @@ class DatasetProcessor():
         return "%s.%s" % (self.__output_filename, extension)
 
     def save_datasource(self, data, info_dict):
-        print(data.columns)
         # write data to output files and create DataSource object
         data.to_csv(self.output_filename("csv"), header=False,
                     index=False, mode="w")

@@ -1,4 +1,7 @@
 import sys
+import pylab as plt
+
+from matplotlib import cm
 
 from .preprocessors import GoogleDatasetProcessor
 from .preprocessors import BitbrainsDatasetProcessor
@@ -16,6 +19,7 @@ from .model import Interpolation_Modes
 from .histogram import Histogram
 from .kpis import KPIs
 from .bundles import BundleGenerator
+from .plotter import HairyPlotter
 
 output = sys.argv[1]
 filenames = sys.argv[2:]
@@ -25,7 +29,7 @@ filenames = sys.argv[2:]
 
 
 # folder = "cloud_traces/bitbrains/fastStorage/2013-8/"
-# #folder = sys.argv[2]
+# folder = sys.argv[2]
 # source2 = BitbrainsDatasetProcessor(name="Brainss",
 #                                     output_filename=output,
 #                                     source_folder=folder).process()
@@ -70,15 +74,27 @@ kpis = KPIs(source_hist_new_bin, gen_hist_new_bin)
 print(kpis.error(), kpis.quality())
 print()
 
+HairyPlotter.plot_histogram(
+    source_hist_new_bin, column_names=source.column_names)
+
+HairyPlotter.plot_histogram(
+    gen_hist_new_bin, cmap=cm.Greens,               # noqa pylint: disable=E1101
+    title="Generated Data")
+
+HairyPlotter.plot_model(model, gen_hist_new_bin.binning,
+        cmap=cm.Oranges,                            # noqa pylint: disable=E1101
+        title="Model function")
+
+plt.show()
 
 # TODO: Bundle amount recommendation to BundleGenerator.
 # Error/Quality stuff
 # Some plotting.
 
-#bing = IrregularBinning(8, source.domain, spread=0.3)
+# bing = IrregularBinning(8, source.domain, spread=0.3)
 # print(bing.edges)
-#print("Random seed =", bing.random_seed)
+# print("Random seed =", bing.random_seed)
 
-#bing = ClusteredBinning(8, source)
+# bing = ClusteredBinning(8, source)
 # print(bing.edges)
-#print("Random seed =", bing.random_seed)
+# print("Random seed =", bing.random_seed)
