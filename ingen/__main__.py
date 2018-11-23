@@ -11,6 +11,7 @@ from .preprocessors import DataReader
 from .binning import RegularBinning
 from .binning import IrregularBinning
 from .binning import ClusteredBinning
+from .binning import G2ProgressionBinning
 from .binning import Pad_Modes
 from .model import ModelParams
 from .model import Model
@@ -46,8 +47,11 @@ filenames = sys.argv[2:]
 
 source = DataReader(filename=output).read()
 
+gebing = G2ProgressionBinning(8, source.domain)
+
+
 bing = RegularBinning(8, source.domain)
-model_params = ModelParams(Pad_Modes.MIRROR, Pad_Values.NEG_COPY,
+model_params = ModelParams(Pad_Modes.MIRROR, Pad_Values.ZERO,
                            Interpolation_Modes.LINEAR)
 histogram = source.get_histogram(bing)
 model = Model.from_histogram(model_params, histogram,
@@ -55,7 +59,7 @@ model = Model.from_histogram(model_params, histogram,
 model.to_file("/tmp/a")
 model2 = Model.from_file("/tmp/a")
 
-gebing = RegularBinning(8, source.domain)
+#gebing = RegularBinning(8, source.domain)
 
 bg = BundleGenerator(model, gebing)
 fundle = bg.generate_uniform(2)
@@ -86,10 +90,6 @@ HairyPlotter.plot_model(model, gen_hist_new_bin.binning,
         title="Model function")
 
 plt.show()
-
-# TODO: Bundle amount recommendation to BundleGenerator.
-# Error/Quality stuff
-# Some plotting.
 
 # bing = IrregularBinning(8, source.domain, spread=0.3)
 # print(bing.edges)

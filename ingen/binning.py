@@ -11,6 +11,7 @@ class Binning_Types(Enum):
     REGULAR = 1
     IRREGULAR = 2
     CLUSTERED = 3
+    G2PROGRESSION = 4
     SUBBINNING = 99
 
 
@@ -20,12 +21,12 @@ class Pad_Modes(Enum):
 
 
 class Binning():
+
     def __init__(self, type, edges, random_seed=0):
         self.__type = type
         self.__edges = list(np.copy(edges))
-        self.__counts = [
-            len(x) - 1 for x in edges
-        ]
+        self.__counts = [len(x) - 1 for x in edges]
+        self.__domain = [x.max() for x in self.edges]
         self.__random_seed = random_seed
         self.__distances = [edges_along_dim[1:] - edges_along_dim[:-1]
                             for edges_along_dim in edges]
@@ -83,6 +84,10 @@ class Binning():
     def dimensions(self):
         return len(self.edges)
 
+    @property
+    def domain(self):
+        return self.__domain
+
     def to_dict(self):
         return to_dict(self, [
             "type",
@@ -97,6 +102,7 @@ class Binning():
 
 
 class RegularBinning(Binning):
+
     def __init__(self, counts, domain):
         if isinstance(counts, int):
             counts = [counts] * len(domain)
@@ -111,6 +117,7 @@ class RegularBinning(Binning):
 
 
 class IrregularBinning(Binning):
+
     def __init__(self, counts, domain, spread=0.3):
         if isinstance(counts, int):
             counts = [counts] * len(domain)
@@ -144,13 +151,14 @@ class IrregularBinning(Binning):
 
 
 class ClusteredBinning(Binning):
+
     def __init__(self, counts, src):
         if isinstance(counts, int):
             counts = [counts] * len(src.domain)
 
         random_seed = int(time())
         edges = self.__clusteredBinEdgeGenerator(counts, src.domain,
-                                                     src.data, random_seed)
+                                                 src.data, random_seed)
         super().__init__(type=Binning_Types.CLUSTERED,
                          edges=edges,
                          random_seed=random_seed)
@@ -169,14 +177,31 @@ class ClusteredBinning(Binning):
                 for c, d, col in zip(counts, domain, data.T)]
 
 
+class G2ProgressionBinning(Binning):
+
+    def __init__(self, counts, domain):
+        if isinstance(counts, int):
+            counts = [counts] * len(domain)
+
+        edges = self.__g2progressionBinEdgeGenerator(counts, domain)
+        super().__init__(type=Binning_Types.G2PROGRESSION,
+                         edges=edges)
+
+    def __g2progressionBinEdgeGenerator(self, counts, domain):
+        return [d / np.logspace(0.0, n, n + 1, base=2)[::-1]
+                for n, d in zip(counts, domain)]
+
+
 class BinningExtender():
+
     @staticmethod
     def mirror(binning):
         extended_bin_edges = [np.concatenate((
-                [edges_along_dim[0] + edges_along_dim[0] - edges_along_dim[1]],
-                edges_along_dim,
-                [edges_along_dim[-1] + edges_along_dim[-1] - edges_along_dim[-2]]
-            )) for edges_along_dim in binning.edges]
+            [edges_along_dim[0] + edges_along_dim[0] - edges_along_dim[1]],
+            edges_along_dim,
+            [edges_along_dim[-1] +
+             edges_along_dim[-1] - edges_along_dim[-2]]
+        )) for edges_along_dim in binning.edges]
         return Binning(binning.type, extended_bin_edges,
                        binning.random_seed)
 
