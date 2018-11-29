@@ -122,7 +122,7 @@ class IrregularBinning(Binning):
         if isinstance(counts, int):
             counts = [counts] * len(domain)
 
-        random_seed = int(time())
+        random_seed = np.random.randint(2**32-1)
         edges = self.__irregularBinEdgeGenerator(
             counts, domain, spread, random_seed)
         super().__init__(type=Binning_Types.IRREGULAR,
@@ -156,7 +156,7 @@ class ClusteredBinning(Binning):
         if isinstance(counts, int):
             counts = [counts] * len(src.domain)
 
-        random_seed = int(time())
+        random_seed = np.random.randint(2**32-1)
         edges = self.__clusteredBinEdgeGenerator(counts, src.domain,
                                                  src.data, random_seed)
         super().__init__(type=Binning_Types.CLUSTERED,
@@ -190,6 +190,22 @@ class G2ProgressionBinning(Binning):
     def __g2progressionBinEdgeGenerator(self, counts, domain):
         return [d / np.logspace(0.0, n, n + 1, base=2)[::-1]
                 for n, d in zip(counts, domain)]
+
+
+class BinningGenerator():
+
+    @staticmethod
+    def generate(type, counts, domain, src=None, spread=0.3):
+        if type == Binning_Types.REGULAR:
+            return RegularBinning(counts, domain)
+        elif type == Binning_Types.IRREGULAR:
+            return IrregularBinning(counts, domain, spread)
+        elif type == Binning_Types.CLUSTERED:
+            return ClusteredBinning(counts, src)
+        elif type == Binning_Types.G2PROGRESSION:
+            return G2ProgressionBinning(counts, domain)
+        else:
+            raise Exception("Invalid binning type.")
 
 
 class BinningExtender():

@@ -104,7 +104,7 @@ class BundleGenerator():
     def __generate(self, amount, random_seed, picker, name):
         # generate bundles
         if not random_seed:
-            random_seed = int(time())
+            random_seed = np.random.randint(2**32-1)
         np.random.seed(random_seed)
         self.__last_seed = random_seed
 

@@ -204,7 +204,7 @@ class UniformDatasetProcessor(DatasetProcessor):
         self.__dimensions = dimensions
 
     def process(self):
-        random_seed = int(time())
+        random_seed = np.random.randint(2**32-1)
         np.random.seed(random_seed)
         data = pd.DataFrame(np.random.rand(10000, self.__dimensions))
         info_dict = {
@@ -226,7 +226,7 @@ class HotspotsDatasetProcessor(DatasetProcessor):
         self.__hotspot_count = hotspot_count
 
     def process(self):
-        random_seed = int(time())
+        random_seed = np.random.randint(2**32-1)
         np.random.seed(random_seed)
         data = []
         for _ in range(self.__hotspot_count):
