@@ -172,7 +172,6 @@ class BitbrainsDatasetProcessor(DatasetProcessor):
         return vm[self.column_names].max()
 
     def process(self):
-        print(self.source_folder)
         data = pd.concat([self.__get_vm_stats(f)
                           for f in glob.glob(self.source_folder + "/*.csv")],
                          axis=1)
