@@ -107,6 +107,9 @@ class RegularBinning(Binning):
     def __init__(self, counts, domain):
         if isinstance(counts, int):
             counts = [counts] * len(domain)
+        elif isinstance(counts, list) and isinstance(domain, list):
+            if len(counts) != len(domain):
+                raise Exception("Dimensions of counts and domain mismatch.")
 
         edges = self.__regularBinEdgeGenerator(counts, domain)
         super().__init__(type=Binning_Types.REGULAR,
@@ -122,6 +125,9 @@ class IrregularBinning(Binning):
     def __init__(self, counts, domain, spread=0.3):
         if isinstance(counts, int):
             counts = [counts] * len(domain)
+        elif isinstance(counts, list) and isinstance(domain, list):
+            if len(counts) != len(domain):
+                raise Exception("Dimensions of counts and domain mismatch.")
 
         random_seed = np.random.randint(2**32-1)
         edges = self.__irregularBinEdgeGenerator(
@@ -156,6 +162,9 @@ class ClusteredBinning(Binning):
     def __init__(self, counts, src):
         if isinstance(counts, int):
             counts = [counts] * len(src.domain)
+        elif isinstance(counts, list) and isinstance(domain, list):
+            if len(counts) != len(domain):
+                raise Exception("Dimensions of counts and domain mismatch.")
 
         random_seed = np.random.randint(2**32-1)
         edges = self.__clusteredBinEdgeGenerator(counts, src.domain,
@@ -183,6 +192,9 @@ class G2ProgressionBinning(Binning):
     def __init__(self, counts, domain):
         if isinstance(counts, int):
             counts = [counts] * len(domain)
+        elif isinstance(counts, list) and isinstance(domain, list):
+            if len(counts) != len(domain):
+                raise Exception("Dimensions of counts and domain mismatch.")
 
         edges = self.__g2progressionBinEdgeGenerator(counts, domain)
         super().__init__(type=Binning_Types.G2PROGRESSION,
