@@ -12,6 +12,7 @@ class Binning_Types(Enum):
     IRREGULAR = 2
     CLUSTERED = 3
     G2PROGRESSION = 4
+    USER = 98
     SUBBINNING = 99
 
 
