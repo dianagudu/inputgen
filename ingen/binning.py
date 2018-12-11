@@ -162,8 +162,8 @@ class ClusteredBinning(Binning):
     def __init__(self, counts, src):
         if isinstance(counts, int):
             counts = [counts] * len(src.domain)
-        elif isinstance(counts, list) and isinstance(domain, list):
-            if len(counts) != len(domain):
+        elif isinstance(counts, list) and isinstance(src.domain, list):
+            if len(counts) != len(src.domain):
                 raise Exception("Dimensions of counts and domain mismatch.")
 
         random_seed = np.random.randint(2**32-1)
