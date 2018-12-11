@@ -91,10 +91,12 @@ def g_datasource():
 @click.argument("output", type=click.Path())
 def g_binning(datasource, domain, type, amount, output, spread):
    """Generates a binning of a given type, with AMOUNT bins in each dimension.
+    The binning is written to "OUTPUT.yaml".
+
    AMOUNT can be an integer or a comma-separated list of integers, representing
    the number of bins per dimension.
 
-   The binning is written to "OUTPUT.yaml".
+    When not specified, the binning domain is inferred from datasource.
    """
    # datasource = None and domain == None --> Error
    # datasource = None and domain != None --> OK
@@ -104,7 +106,10 @@ def g_binning(datasource, domain, type, amount, output, spread):
    if domain is None and datasource is None:
       raise click.UsageError("Either a datasource or a domain is required.")
    elif not datasource is None:
+        try:
       source = DataReader(datasource).read()
+        except:
+            raise click.FileError(datasource, "does not exist or is not readable.")
       if not domain is None:
          if len(source.domain) != len(domain):
                raise click.BadOptionUsage("domain",
