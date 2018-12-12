@@ -7,7 +7,7 @@ from .preprocessors import GoogleDatasetProcessor
 from .preprocessors import BitbrainsDatasetProcessor
 from .preprocessors import UniformDatasetProcessor
 from .preprocessors import HotspotsDatasetProcessor
-from .preprocessors import DataReader
+from .preprocessors import DataSourceIO
 from .binning import RegularBinning
 from .binning import IrregularBinning
 from .binning import ClusteredBinning
@@ -45,7 +45,7 @@ filenames = sys.argv[2:]
 #                                    hotspot_count=16).process()
 
 
-source = DataReader(filename=output).read()
+source = DataSourceIO.read(output)
 
 gebing = G2ProgressionBinning(8, source.domain)
 

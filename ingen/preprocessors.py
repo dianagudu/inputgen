@@ -59,7 +59,7 @@ class DatasetProcessor():
             info=objectview(mobj["source_info"]),
             domain=mobj["dataset"]["domain"],
             column_names=mobj["dataset"]["column_names"],
-            data=data
+            data=data.values
         )
 
         return src
@@ -278,17 +278,15 @@ class DataSource():
         return Histogram(binning, values)
 
 
-class DataReader():
-    def __init__(self, filename):
-        self.__datafile = "%s.csv" % filename
-        self.__metafile = "%s.yaml" % filename
-
-    def read(self):
-        with open(self.__metafile, "r") as mf:
+class DataSourceIO():
+    @staticmethod
+    def read(filename):
+        datafile = "%s.csv" % filename
+        metafile = "%s.yaml" % filename
+        with open(metafile, "r") as mf:
             mobj = yaml.load(mf)
 
-        with open(self.__datafile, "r") as df:
-            data = np.loadtxt(df, delimiter=",")
+        data = np.loadtxt(datafile, delimiter=",")
 
         src = DataSource(
             info=objectview(mobj["source_info"]),
@@ -298,3 +296,26 @@ class DataReader():
         )
 
         return src
+
+    @staticmethod
+    def write(datasource, filename):
+        datafile = "%s.csv" % filename
+        metafile = "%s.yaml" % filename
+
+        np.savetxt(datafile, datasource.data, delimiter=",")
+
+        mobj = {
+            "source_info": datasource.info,
+            "dataset": {
+                "domain": datasource.domain,
+                "column_names": datasource.column_names
+            }
+        }
+
+        # with open(filename_goes_here, "w") as f:
+        #    json.dump(mobj, f, indent=4)
+
+        with open(metafile, "w") as f:
+            yaml.dump(mobj, f, default_flow_style=False)
+
+        return
