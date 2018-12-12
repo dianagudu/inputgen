@@ -26,14 +26,14 @@ class BundleGenerator():
             -1].min()
 
         if min_prob > 0:
-            return int(1/min_prob)
+            return int(np.ceil(1/min_prob))
         else:
             return 0
 
     def expected_best_quality(self, amount, real_histogram):
         """real_histogram: the histogram of the model's source data
                            binned with the new binning."""
-        index = np.array([p * amount > 1 or
+        index = np.array([p * amount >= 1 or
                           real_histogram.values.flatten()[i] == 0
                           for i, p in enumerate(self.probabilities[:, -1])])
         return self.binning.volumes.flatten()[index].sum() / \
