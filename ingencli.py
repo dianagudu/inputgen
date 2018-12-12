@@ -8,7 +8,7 @@ from ingen.preprocessors import GoogleDatasetProcessor
 from ingen.preprocessors import BitbrainsDatasetProcessor
 from ingen.preprocessors import UniformDatasetProcessor
 from ingen.preprocessors import HotspotsDatasetProcessor
-from ingen.preprocessors import DataReader
+from ingen.preprocessors import DataSourceIO
 
 from ingen.binning import Binning
 from ingen.binning import Binning_Types
@@ -20,6 +20,8 @@ from ingen.histogram import Pad_Values
 from ingen.model import Interpolation_Modes
 from ingen.model import ModelParams
 from ingen.model import Model
+
+from ingen.bundles import BundleGenerator
 
 
 def validate_binning_domain(ctx, param, value):
@@ -82,10 +84,9 @@ def validate_binning(ctx, param, value):
             # create binning
             return Binning(Binning_Types.USER, edges)
         except ValueError:
-            raise click.BadParameter('%s should be either a path to file where binning is stored, \n\
-or a colon-separated list of edges per dimensions, with a comma-separated list of floats > 0\n\
-as bin edges in each dimension, not \'%s\'.'
-            % (param.name, value))
+            raise click.BadParameter('\'%s\' ' \
+                                     'can not be interpreted as list of ' \
+                                     'positive floats.' % value)
 
 
 @click.group()
@@ -130,7 +131,7 @@ def g_datasource():
 @click.argument("output", type=click.Path())
 def g_binning(datasource, domain, type, amount, output, spread):
     """Generates a binning of a given type, with AMOUNT bins in each dimension.
-    The binning is written to "OUTPUT" in yaml format.
+    The binning is written to OUTPUT in yaml format.
 
     AMOUNT can be an integer or a comma-separated list of integers, representing
     the number of bins per dimension.
@@ -146,13 +147,13 @@ def g_binning(datasource, domain, type, amount, output, spread):
         raise click.UsageError("Either a datasource or a domain is required.")
     elif not datasource is None:
         try:
-            source = DataReader(datasource).read()
+            source = DataSourceIO.read(datasource)
         except:
             raise click.FileError(datasource, "does not exist or is not readable.")
         if not domain is None:
             if len(source.domain) != len(domain):
                     raise click.BadOptionUsage("domain",
-                                               "Dimensions of of datasource domain (%d) and given domain (%d) mismatch."
+                                               "Dimensions of datasource domain (%d) and given domain (%d) mismatch."
                                                % (len(source.domain), len(domain)))
         else:
             domain = source.domain
@@ -177,19 +178,22 @@ def g_binning(datasource, domain, type, amount, output, spread):
 
 @generate.command(short_help='derive model', name='model')
 @click.option("--padmode", type=click.Choice([
-   'epsilon', 'mirror']), default='mirror')
+   'epsilon', 'mirror']), default='mirror',
+    help='padding mode for 👻 bins, default: mirror')
 @click.option("--padvalue", type=click.Choice([
-   'zero', 'neg_one', 'copy', 'neg_copy']), default='neg_copy')
+   'zero', 'neg_one', 'copy', 'neg_copy']), default='neg_copy',
+   help='padding values for 👻 bins, default: neg_copy')
 @click.option("--interpolation", type=click.Choice([
-   'linear', 'rbf_linear', 'rbf_multiquad']), default='linear')
-@click.option("--resources", help='comma-separated list of resource names')
+   'linear', 'rbf_linear', 'rbf_multiquad']), default='linear',
+   help='model interpolation mode, default: linear')
+@click.option("--resource-names", help='comma-separated list of resource names')
 @click.argument("datasource", type=click.Path())
 @click.argument("binning", callback=validate_binning)
 @click.argument("output", type=click.Path())
-def g_model(padmode, padvalue, interpolation, resources,
+def g_model(padmode, padvalue, interpolation, resource_names,
             datasource, binning, output):
     """Derives a model from DATASOURCE with given BINNING.
-    The model is written to "OUTPUT".
+    The model is written to OUTPUT.
 
     BINNING can be a path to a previously created binning, or custom bin edges
     in all dimension: dimensions are separated by colons, edge values in
@@ -197,7 +201,7 @@ def g_model(padmode, padvalue, interpolation, resources,
     """
     # datasource checks
     try:
-        source = DataReader(datasource).read()
+        source = DataSourceIO.read(datasource)
     except:
         raise click.FileError(datasource, "does not exist or is not readable.")
 
@@ -207,13 +211,13 @@ def g_model(padmode, padvalue, interpolation, resources,
             "Dimensions of binning (%d) and datasource (%d) mismatch."
             % (binning.dimensions, len(source.domain)))
 
-    # resources checks: split list and verifYies dim match with source
-    if not resources is None:
-        resources = resources.split(",")
-        if len(resources) != len(source.column_names):
-            raise click.BadOptionUsage("resources",
-            "Dimensions of resources (%d) and datasource (%d) mismatch."
-            % (len(resources), len(source.column_names)))
+    # resources checks: split list and verify dim match with source
+    if not resource_names is None:
+        resource_names = resource_names.split(",")
+        if len(resource_names) != len(source.column_names):
+            raise click.BadOptionUsage("resource-names",
+            "Dimensions of resource names (%d) and datasource (%d) mismatch."
+            % (len(resource_names), len(source.column_names)))
 
     # convert model params to enums and create ModelParams object
     model_params = ModelParams(
@@ -225,14 +229,75 @@ def g_model(padmode, padvalue, interpolation, resources,
     # histogram the data with given binning
     histogram = source.get_histogram(binning)
 
-    model = Model.from_histogram(model_params, histogram, resources)
+    model = Model.from_histogram(model_params, histogram, resource_names)
     model.to_file(output)
 
 
 @generate.command(short_help='generate bundles', name='bundles')
-def g_bundles():
-    click.echo('Not implemented')
-    pass
+@click.option("--use-recommended", is_flag=True, default=False,
+    help='use recommended amount of bundles instead of given AMOUNT')
+@click.option("--print-ebv", is_flag=True, default=False,
+    help='print expected best quality for given AMOUNT')
+@click.option("--datasource", type=click.Path(),
+    help='path to datasource')
+@click.argument("model", type=click.Path(exists=True))
+@click.argument("amount", type=int)
+@click.argument("binning", callback=validate_binning)
+@click.argument("output", type=click.Path())
+def g_bundles(use_recommended, print_ebv, datasource,
+              model, amount, binning, output):
+    """Generates AMOUNT bundles based on MODEL and BINNING.
+    The bundles are written to OUTPUT.yaml and OUTPUT.csv.
+
+    MODEL has to be a previously generated model file.
+
+    AMOUNT is an integer that is ignored if --use-recommended is provided.
+
+    BINNING can be a path to a previously created binning, or custom bin edges
+    in all dimension: dimensions are separated by colons, edge values in
+    each dimension are separated by commas.
+    """
+    # load model
+    try:
+        model = Model.from_file(model)
+    except Exception:
+        # raise this if file exists but does not contan a model
+        raise click.FileError(model, 'malformed model file.')
+
+    # check dimensions match for binning and model
+    if binning.dimensions != len(model.column_names):
+        raise click.UsageError("Dimensions of binning (%d) and model (%d) mismatch."
+                               % (binning.dimensions, len(model.domain)))
+
+    # if ebv and recommended amount are requested, real datasource is required
+    # load datasource and histogram it using the desired binning
+    if use_recommended or print_ebv:
+        if datasource is None:
+            raise click.UsageError("Datasource required for --use-recommended and --print-ebv options.")
+        try:
+            source = DataSourceIO.read(datasource)
+        except:
+            raise click.FileError(datasource, "does not exist or is not readable.")
+        real_histogram = source.get_histogram(binning)
+
+    # option to generate uniform prob instead of using model
+
+    # create DatasetGenerator
+    bg = BundleGenerator(model, binning)
+
+    # use recommended amount
+    if use_recommended:
+        amount = bg.recommended_amount(real_histogram)
+        click.echo("Using recommended amount: %d" % amount)
+
+    # print ebv
+    if print_ebv:
+        ebv = bg.expected_best_quality(amount, real_histogram)
+        click.echo("Expected best quality: %f" % ebv)
+
+    # generate bundles and save to OUTPUT
+    bundles = bg.generate(amount)
+    DataSourceIO.write(bundles, output)
 
 
 class G_DATASOURCE():
