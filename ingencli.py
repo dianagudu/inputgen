@@ -91,7 +91,7 @@ def g_datasource():
 @click.argument("output", type=click.Path())
 def g_binning(datasource, domain, type, amount, output, spread):
    """Generates a binning of a given type, with AMOUNT bins in each dimension.
-    The binning is written to "OUTPUT.yaml".
+    The binning is written to "OUTPUT" in yaml format.
 
    AMOUNT can be an integer or a comma-separated list of integers, representing
    the number of bins per dimension.
@@ -113,7 +113,7 @@ def g_binning(datasource, domain, type, amount, output, spread):
       if not domain is None:
          if len(source.domain) != len(domain):
                raise click.BadOptionUsage("domain",
-                                          "Dimension mismatch for source domain (%d) and given domain (%d)."
+                                               "Dimensions of of datasource domain (%d) and given domain (%d) mismatch."
                                           % (len(source.domain), len(domain)))
       else:
          domain = source.domain
@@ -131,9 +131,9 @@ def g_binning(datasource, domain, type, amount, output, spread):
    else:
       binning = BinningGenerator.generate(type, amount, domain, source, spread)
 
-   with open(output + ".yaml", "w") as f:
+    with open(output, "w") as f:
       yaml.dump(binning.to_dict(), f)
-      click.echo("Saved binning to %s.yaml" % output)
+        click.echo("Saved binning to %s" % output)
 
 
 @generate.command(short_help='derive model', name='model')
