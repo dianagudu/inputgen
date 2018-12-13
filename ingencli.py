@@ -23,6 +23,7 @@ from ingen.model import Model
 
 from ingen.bundles import BundleGenerator
 
+from ingen.kpis import KPIs
 
 def validate_binning_domain(ctx, param, value):
     # domain = None --> return None
@@ -101,9 +102,41 @@ def generate():
 
 @cli.command(short_help='subcommand to calculate different KPIs',
              name='compare')
-def compare():
-    click.echo('Not implemented')
-    pass
+@click.argument("real", type=click.Path())
+@click.argument("generated", type=click.Path())
+@click.argument("binning", callback=validate_binning)
+def compare(real, generated, binning):
+    # datasources checks
+    try:
+        real = DataSourceIO.read(real)
+    except:
+        raise click.FileError(real, "does not exist or is not readable.")
+    try:
+        generated = DataSourceIO.read(generated)
+    except:
+        raise click.FileError(generated, "does not exist or is not readable.")
+
+    # validate dimensionality match between real and generated data
+    if len(real.domain) != len(generated.domain):
+        raise click.UsageError(
+            "Dimensions of real data (%d) and generated data (%d) mismatch."
+            % (len(real.domain), len(generated.domain)))
+
+    # validate dimensionality match between binning and data
+    if binning.dimensions != len(real.domain):
+        raise click.UsageError(
+            "Dimensions of binning (%d) and data sources (%d) mismatch."
+            % (binning.dimensions, len(real.domain)))
+
+    # histogram datasets
+    real_hist = real.get_histogram(binning)
+    generated_hist = generated.get_histogram(binning)
+
+    # calculate KPIs
+    kpis = KPIs(real_hist, generated_hist)
+
+    click.echo("Error:\t%f" % kpis.error())
+    click.echo("Q:\t%f\nQNEB:\t%f\nQEB:\t%f" % kpis.quality())
 
 
 @cli.group(short_help='subcommand to visualize things', name='plot')
@@ -368,6 +401,14 @@ class G_DATASOURCE():
                                  output_filename=output,
                                  dimensions=dimensions,
                                  hotspot_count=hotspots).process()
+
+
+@plot.command(short_help='plot datasource')
+@click.argument("output", type=click.Path())
+@click.argument("datasource", type=click.Path())
+@click.argument("binning")
+def p_data(name, output, input):
+    pass
 
 
 if __name__ == '__main__':
