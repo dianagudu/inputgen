@@ -117,7 +117,7 @@ class BundleGenerator():
 
         ret = DataSource(
             info=objectview(mobj),
-            domain=[max(b) for b in self.binning.edges],
+            domain=self.binning.domain,
             column_names=self.model.column_names,
             data=picker(self.probabilities, amount)
         )

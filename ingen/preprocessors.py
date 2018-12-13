@@ -305,9 +305,9 @@ class DataSourceIO():
         np.savetxt(datafile, datasource.data, delimiter=",")
 
         mobj = {
-            "source_info": datasource.info,
+            "source_info": datasource.info.__dict__,
             "dataset": {
-                "domain": datasource.domain,
+                "domain": [float(x) for x in datasource.domain],
                 "column_names": datasource.column_names
             }
         }
