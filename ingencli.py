@@ -3,6 +3,7 @@ import click
 import yaml
 import os.path
 import numpy as np
+import pylab as plt
 
 from ingen.preprocessors import GoogleDatasetProcessor
 from ingen.preprocessors import BitbrainsDatasetProcessor
@@ -24,6 +25,9 @@ from ingen.model import Model
 from ingen.bundles import BundleGenerator
 
 from ingen.kpis import KPIs
+
+from ingen.plotter import HairyPlotter
+
 
 def validate_binning_domain(ctx, param, value):
     # domain = None --> return None
@@ -141,7 +145,6 @@ def compare(real, generated, binning):
 
 @cli.group(short_help='subcommand to visualize things', name='plot')
 def plot():
-    click.echo('Not implemented')
     pass
 
 
@@ -403,12 +406,123 @@ class G_DATASOURCE():
                                  hotspot_count=hotspots).process()
 
 
-@plot.command(short_help='plot datasource')
-@click.argument("output", type=click.Path())
+@plot.command(short_help='plot datasource', name="data")
+@click.option("--show", is_flag=True, default=False, help='show figure')
+@click.option("--cmap", default='Blues', help='matplotlib colormap name')
+@click.option("--title", help='title to be displayed above figure')
+@click.option("--resource-names", help='comma-separated list of resource names')
 @click.argument("datasource", type=click.Path())
-@click.argument("binning")
-def p_data(name, output, input):
-    pass
+@click.argument("binning", callback=validate_binning)
+@click.argument("output", type=click.Path())
+def p_data(show, cmap, title, resource_names, datasource, binning, output):
+    """Plots a histogram of DATASOURCE, binned using BINNING.
+    The figure is saved to OUTPUT.png.
+
+    For multi-dimensional data, each pair of resources is plotted as a 2D histogram.
+
+    BINNING can be a path to a previously created binning, or custom bin edges
+    in all dimension: dimensions are separated by colons, edge values in
+    each dimension are separated by commas.
+    """
+    try:
+        cmap = plt.get_cmap(cmap)
+    except Exception:
+        raise click.BadOptionUsage("cmap",
+            "must be a valid Matplotlib colormap name, not \'%s\'."
+            % cmap)
+
+    try:
+        source = DataSourceIO.read(datasource)
+    except:
+        raise click.FileError(datasource, "does not exist or is not readable.")
+
+    # validate dimensionality match between binning and source
+    if binning.dimensions != len(source.domain):
+        raise click.UsageError(
+            "Dimensions of binning (%d) and datasource (%d) mismatch."
+            % (binning.dimensions, len(source.domain)))
+
+    # resources checks: split list and verify dim match with source
+    if resource_names is None:
+        resource_names = source.column_names
+    else:
+        resource_names = resource_names.split(",")
+        if len(resource_names) != len(source.column_names):
+            raise click.BadOptionUsage("resource-names",
+            "Dimensions of resource names (%d) and datasource (%d) mismatch."
+            % (len(resource_names), len(source.column_names)))
+
+    histogram = source.get_histogram(binning)
+
+    HairyPlotter.plot_histogram(
+        histogram,
+        cmap=cmap,
+        column_names=resource_names,
+        title=title)
+
+    plt.savefig(output, bbox_inches='tight')
+
+    if show:
+        plt.show()
+
+
+@plot.command(short_help='plot model', name="model")
+@click.option("--show", is_flag=True, default=False, help='show figure')
+@click.option("--cmap", default='Blues', help='matplotlib colormap name')
+@click.option("--title", help='title to be displayed above figure')
+@click.option("--resource-names", help='comma-separated list of resource names')
+@click.argument("model", type=click.Path(exists=True))
+@click.argument("binning", callback=validate_binning)
+@click.argument("output", type=click.Path())
+def p_model(show, cmap, title, resource_names, model, binning, output):
+    """Plots probabilities derived by MODEL, histogrammed using BINNING.
+    The figure is saved to OUTPUT.png.
+
+    For multi-dimensional data, each pair of resources is plotted as a 2D histogram.
+
+    BINNING can be a path to a previously created binning, or custom bin edges
+    in all dimension: dimensions are separated by colons, edge values in
+    each dimension are separated by commas.
+    """
+    try:
+        cmap = plt.get_cmap(cmap)
+    except Exception:
+        raise click.BadOptionUsage("cmap",
+            "must be a valid Matplotlib colormap name, not \'%s\'."
+            % cmap)
+
+    # load model
+    try:
+        model = Model.from_file(model)
+    except Exception:
+        # raise this if file exists but does not contan a model
+        raise click.FileError(model, 'malformed model file.')
+
+    # check dimensions match for binning and model
+    if binning.dimensions != len(model.column_names):
+        raise click.UsageError("Dimensions of binning (%d) and model (%d) mismatch."
+                               % (binning.dimensions, len(model.domain)))
+
+    # resources checks: split list and verify dim match with source
+    if resource_names is None:
+        resource_names = model.column_names
+    else:
+        resource_names = resource_names.split(",")
+        if len(resource_names) != len(model.column_names):
+            raise click.BadOptionUsage("resource-names",
+            "Dimensions of resource names (%d) and datasource (%d) mismatch."
+            % (len(resource_names), len(model.column_names)))
+
+    HairyPlotter.plot_model(
+        model, binning,
+        cmap=cmap,
+        column_names=resource_names,
+        title=title)
+
+    plt.savefig(output, bbox_inches='tight')
+
+    if show:
+        plt.show()
 
 
 if __name__ == '__main__':
